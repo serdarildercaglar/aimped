@@ -236,6 +236,10 @@ def download_model(bucket_name, s3_folder, aws_access_key_id, aws_secret_access_
         if os.path.exists(local_dir):
             os.system(f"rm -rf {local_dir}")
             logger.info(f"Forced download: Cleared existing directory {local_dir}")
+    else:
+        if os.path.exists(local_dir) and os.listdir(local_dir):
+            logger.info(f"Model directory is not empty: {local_dir}")
+            return f'{local_dir}'
             
     s3_folder = os.path.join(s3_folder)
     
@@ -296,6 +300,21 @@ def download_model(bucket_name, s3_folder, aws_access_key_id, aws_secret_access_
 
 ########################################### Payload Parser ######################################
 
+def payload_is_json(payload):
+    if payload is None:
+        raise ValueError("Payload is None")
+    
+    # GET INPUT
+    try:
+        if isinstance(payload, str):
+            payload = json.loads(payload)
+            return payload
+        elif isinstance(payload, dict):
+            return payload
+        else:
+            raise ValueError("Payload is not a JSON string or dictionary")
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Error parsing JSON: {str(e)}")
 
 
 def determine_data_source(data):
