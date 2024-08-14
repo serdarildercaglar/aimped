@@ -33,7 +33,6 @@ aimped/nlp/translation_context.py
 aimped/services/__init__.py
 aimped/services/api.py
 aimped/services/license.py
-aimped/services/model_downloader.py
 aimped/services/auth_service/__init__.py
 aimped/services/auth_service/auth.py
 aimped/sound/__init__.py
