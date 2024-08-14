@@ -1,0 +1,8 @@
+nltk
+pandas
+scikit-learn
+pydantic
+neo4j
+cryptography
+boto3
+jwt
