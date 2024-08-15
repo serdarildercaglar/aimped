@@ -300,7 +300,7 @@ def download_model(bucket_name, s3_folder, aws_access_key_id, aws_secret_access_
 
 ########################################### Payload Parser ######################################
 
-def payload_is_json(payload):
+def payload_is_valid(payload):
     if payload is None:
         raise ValueError("Payload is None")
     
@@ -320,7 +320,7 @@ def payload_is_json(payload):
 def determine_data_source(data):
     # S3 URI kontrolü (input/ ile başlar)
     if isinstance(data, str) and data.startswith("input/"):
-        return "s3 uri"
+        return "s3_uri"
     
     # URL kontrolü (http:// veya https:// ile başlar)
     url_pattern = re.compile(r'^(http://|https://)')
@@ -360,19 +360,42 @@ def determine_data_source(data):
 # 	                        aws_secret_access_key=config("AWS_SECRET_ACCESS_KEY"),
 #                             region_name="us-east-1")
 
-def file_type(file_path):
+def get_file_type(file_path):
     return os.path.splitext(file_path)[1]
 
-def process_payload(input_data:str, file_manager,data_type=None, ):
+def process_payload(payload:str, file_manager):
     
-
+    payload = payload_is_valid(payload)
+    
+    
+    
     if not os.path.exists("input_data_folder"):
         os.makedirs("input_data_folder")
     
+    aimped_file_type = payload.get("file_type",None)
+    if not aimped_file_type:
+        data_type = "data_json"
+    elif aimped_file_type == "pdf":
+        data_type = "data_pdf"
+        file_extension = ".pdf"
+    elif aimped_file_type == "txt":
+        data_type = "data_txt"
+        file_extension = ".txt"
+    elif aimped_file_type == "image":
+        data_type = "data_image"
+        file_extension = ".jpg"
+    elif aimped_file_type == "audio":
+        data_type = "data_audio"
+        file_extension = ".mp3"
+    elif aimped_file_type == "dcm":
+        data_type = "data_dicom"
+        file_extension = ".dcm"
+    elif aimped_file_type == "svg":
+        data_type = "data_svg"
+        file_extension = ".svg"
     
-    uniq_id = str(uuid.uuid4())
+
     
-    file_extension = file_type(input_data)
     
     valid_data_types = ["data_char", "data_pdf", "data_txt", "data_file", "data_json",
                         "data_image", "data_audio", "data_dicom", "data_svg"]
@@ -381,184 +404,295 @@ def process_payload(input_data:str, file_manager,data_type=None, ):
     elif data_type not in valid_data_types:
         raise ValueError(f"Invalid data_type. Must be one of {valid_data_types}")   
     
-    if not isinstance(input_data, str):
-        raise ValueError("input_data must be a string")
-    
+
+    ################# Data JSON #################
     if data_type == "data_json":
-        data_source = determine_data_source(input_data)
-        if data_source == "plain_text":
-            # control plain_text whether it is a local path or not
-            if os.path.exists(input_data):
-                raise ValueError("data_json cannot be a file path. Only plain text is allowed.")
-            else:
-                return input_data
-        elif data_source == "s3 uri":
-            raise ValueError("data_json cannot be a S3 URI. Only plain text is allowed.")
-        elif data_source == "url":
-            raise ValueError("data_json cannot be a URL. Only plain text is allowed.")
-        elif data_source == "local_path":
-            raise ValueError("data_json cannot be a local path. Only plain text is allowed.")
-        elif data_source == "base64":
-            raise ValueError("data_json cannot be a base64 string. Only plain text is allowed.")
+        try:
+            if payload["text"]:
+                pass
+        except:
+            raise ValueError("text key is required in the payload")
         
+        input_datas = payload.get("text", None)
+        if not input_datas:
+            raise ValueError("No data found in the payload.")
+        
+        if not isinstance(input_datas, list):
+            raise ValueError("input must be a list of strings")
+        
+        data_sources = [determine_data_source(data) for data in input_datas]
+        model_input = []
+        for data_source, input_data in zip(data_sources, input_datas):
+            if data_source == "plain_text":
+                # control plain_text whether it is a local path or not
+                if os.path.exists(input_data):
+                    raise ValueError("data_json cannot be a file path. Only plain text is allowed.")
+                else:
+                    model_input.append(input_data)
+            elif data_source == "s3 uri":
+                raise ValueError("data_json cannot be a S3 URI. Only plain text is allowed.")
+            elif data_source == "url":
+                raise ValueError("data_json cannot be a URL. Only plain text is allowed.")
+            elif data_source == "local_path":
+                raise ValueError("data_json cannot be a local path. Only plain text is allowed.")
+            elif data_source == "base64":
+                raise ValueError("data_json cannot be a base64 string. Only plain text is allowed.")
+        return model_input
+    ################# Data Char #################    
     elif data_type == "data_char":
         pass # Todo: data_char için işlem yapılacak
-    
+    ################# Data PDF #################
     elif data_type == "data_pdf":
+        if payload.get("file_type", None) != "pdf":
+            raise ValueError("file_type must be pdf and list of data's key must be 'pdf'")
+        input_datas = payload.get("pdf", None)
+        if not input_datas:
+            raise ValueError("No data found in the payload")
+        if not isinstance(input_datas, list):
+            raise ValueError("input must be a list")
         
-        data_source = determine_data_source(input_data)
-        
-        if file_extension != ".pdf":
-            raise ValueError("data_pdf must be a PDF file")
-        
-        if data_source == "plain_text": # 1
-            # control plain_text whether it is a local path or not
-            if os.path.exists(input_data):
-                return input_data
+        data_sources = [determine_data_source(data) for data in input_datas]
+
+        model_input = []
+        for data_source, input_data in zip(data_sources, input_datas):
+            uniq_id = str(uuid.uuid4())
+            if data_source == "plain_text": # 1
+                # control plain_text whether it is a local path or not
+                if os.path.exists(input_data):
+                    if get_file_type(input_data) != ".pdf":
+                        raise ValueError("data_pdf must be a PDF file")
+                    model_input.append(input_data)
+                else:
+                    raise ValueError("data_pdf must be a file path or S3 URI or URL or base64 string.")
+            elif data_source == "s3_uri": # 2
+                if get_file_type(input_data) != ".pdf":
+                    raise ValueError("data_pdf must be a PDF file")
+                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
+                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+            elif data_source == "url": # 3
+                if get_file_type(input_data) != ".pdf":
+                    raise ValueError("data_pdf must be a PDF file")
+                response = requests.get(input_data)
+                with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                    f.write(response.content)
+                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+            elif data_source == "local_path": # 4
+                if get_file_type(input_data) != ".pdf":
+                    raise ValueError("data_pdf must be a PDF file")
+                model_input.append(input_data)
+            elif data_source == "base64": # 5
+                base64_bytes = base64.b64decode(input_data, validate=True)
+                with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                    f.write(base64_bytes)
+                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
             else:
-                raise ValueError("data_pdf must be a file path or S3 URI or URL or base64 string.")
-        elif data_source == "s3 uri": # 2
-            return file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
-        elif data_source == "url": # 3
-            response = requests.get(input_data)
-            with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
-                f.write(response.content)
-            return f"input_data_folder/{uniq_id}{file_extension}"
-        elif data_source == "local_path": # 4
-            return input_data
-        elif data_source == "base64": # 5
-            base64_bytes = base64.b64decode(input_data, validate=True)
-            with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
-                f.write(base64_bytes)
-            return f"input_data_folder/{uniq_id}{file_extension}"
-        else:
-            raise ValueError("data_pdf must be a file path or S3 URI or URL or base64 string")
-    
+                raise ValueError("data_pdf must be a file path or S3 URI or URL or base64 string")
+        return model_input
+    ################# Data TXT #################
     elif data_type == "data_txt":
+        if payload.get("file_type", None) != "txt":
+            raise ValueError("file_type must be txt and list of data's key must be 'txt'")
+        input_datas = payload.get("txt", None)
+        if not input_datas:
+            raise ValueError("No data found in the payload")
+        if not isinstance(input_datas, list):
+            raise ValueError("input must be a list")
         
-        data_source = determine_data_source(input_data)
-        
-        if file_extension != ".txt":
-            raise ValueError("data_txt must be a TXT file")
-        
-        if data_source == "plain_text":
-            # control plain_text whether it is a local path or not
-            if os.path.exists(input_data):
-                return input_data
+        data_sources = [determine_data_source(data) for data in input_datas]
+
+        model_input = []
+        for data_source, input_data in zip(data_sources, input_datas):
+            uniq_id = str(uuid.uuid4())            
+            if data_source == "plain_text":
+                # control plain_text whether it is a local path or not
+                if os.path.exists(input_data):
+                    if get_file_type(input_data) != ".txt":
+                        raise ValueError("data_txt must be a TXT file")
+                    model_input.append(input_data)
+                else:
+                    raise ValueError("data_txt must be a file path or S3 URI or URL or base64 string.")
+            elif data_source == "s3_uri":
+                if get_file_type(input_data) != ".txt":
+                    raise ValueError("data_txt must be a TXT file")
+                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
+                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+            elif data_source == "url":
+                if get_file_type(input_data) != ".txt":
+                    raise ValueError("data_txt must be a TXT file")
+                response = requests.get(input_data)
+                with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                    f.write(response.content)
+                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+            elif data_source == "local_path":
+                if get_file_type(input_data) != ".txt":
+                    raise ValueError("data_txt must be a TXT file")
+                model_input.append(input_data)
+            elif data_source == "base64":
+                base64_bytes = base64.b64decode(input_data, validate=True)
+                with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                    f.write(base64_bytes)
+                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
             else:
-                raise ValueError("data_txt must be a file path or S3 URI or URL")
-        elif data_source == "s3 uri":
-            return file_manager.download_file_from_s3(config("BUCKET_NAME"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
-        elif data_source == "url":
-            response = requests.get(input_data)
-            with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
-                f.write(response.content)
-            return f"input_data_folder/{uniq_id}{file_extension}"
-        elif data_source == "local_path":
-            return input_data
-        else:
-            raise ValueError("data_txt must be a file path or S3 URI or URL")
-    
+                raise ValueError("data_txt must be a file path or S3 URI or URL or base64 string")
+        return model_input
+            
+    ################# Data File #################
     
     elif data_type == "data_file":
-        pass # Todo: data_file için işlem yapılacak
+        pass # Todo: data_file için işlem yapılacak  
     
+    ################# Data Image #################
     elif data_type == "data_image":
+        if payload.get("file_type", None) != "image":
+            raise ValueError("file_type must be image and list of data's key must be 'image'")
         valid_img_extensions = [".jpg", ".jpeg", ".png"]
-        data_source = determine_data_source(input_data)
+        input_datas = payload.get("image", None)
+        if not input_datas:
+            raise ValueError("No data found in the payload")
+        if not isinstance(input_datas, list):  
+            raise ValueError("input must be a list")
         
-        if file_extension.lower() not in valid_img_extensions:
-            raise ValueError("data_image must be a JPG, JPEG or PNG file")
+        data_sources = [determine_data_source(data) for data in input_datas]
         
-        if data_source == "plain_text":
-            # control plain_text whether it is a local path or not
-            if os.path.exists(input_data):
-                return input_data
+        model_input = []
+        for data_source, input_data in zip(data_sources, input_datas):
+            uniq_id = str(uuid.uuid4())            
+            if data_source == "plain_text":
+                # control plain_text whether it is a local path or not
+                if os.path.exists(input_data):
+                    if get_file_type(input_data) not in valid_img_extensions:
+                        raise ValueError("data_image must be a JPG, JPEG or PNG file")
+                    model_input.append(input_data)
+                else:
+                    raise ValueError("data_image must be a file path or S3 URI or URL or base64 string")
+            elif data_source == "s3_uri":
+                if get_file_type(input_data) not in valid_img_extensions:
+                    raise ValueError("data_image must be a JPG, JPEG or PNG file")
+                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
+                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+            elif data_source == "url":
+                if get_file_type(input_data) not in valid_img_extensions:
+                    raise ValueError("data_image must be a JPG, JPEG or PNG file")
+                response = requests.get(input_data)
+                with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                    f.write(response.content)
+                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+            elif data_source == "local_path":
+                if get_file_type(input_data) not in valid_img_extensions:
+                    raise ValueError("data_image must be a JPG, JPEG or PNG file")
+                model_input.append(input_data)
+            elif data_source == "base64":
+                base64_bytes = base64.b64decode(input_data, validate=True)
+                with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                    f.write(base64_bytes)
+                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
             else:
                 raise ValueError("data_image must be a file path or S3 URI or URL or base64 string")
-        elif data_source == "s3 uri":
-            return file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
-        elif data_source == "url":
-            response = requests.get(input_data)
-            with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
-                f.write(response.content)
-            return f"input_data_folder/{uniq_id}{file_extension}"
-        elif data_source == "local_path":   
-            return input_data
-        elif data_source == "base64":
-            base64_bytes = base64.b64decode(input_data, validate=True)
-            with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
-                f.write(base64_bytes)
-            return f"input_data_folder/{uniq_id}{file_extension}"
-        else:
-            raise ValueError("data_image must be a file path or S3 URI or URL or base64 string")
-    
+        return model_input
+    ################# Data Audio #################
     elif data_type == "data_audio":
+        if payload.get("file_type", None) != "audio":
+            raise ValueError("file_type must be audio and list of data's key must be 'audio'")
         valid_audio_extensions = [".wav", ".mp3", ".mp4"]
-        data_source = determine_data_source(input_data)
+        input_datas = payload.get("audio", None)
+        if not input_datas:
+            raise ValueError("No data found in the payload")
+        if not isinstance(input_datas, list):
+            raise ValueError("input must be a list")
         
-        if file_extension.lower() not in valid_audio_extensions:
-            raise ValueError("data_audio must be a WAV, MP3 or MP4 file")
+        data_sources = [determine_data_source(data) for data in input_datas]
         
-        if data_source == "plain_text":
-            # control plain_text whether it is a local path or not
-            if os.path.exists(input_data):
-                return input_data
+        model_input = []
+        for data_source, input_data in zip(data_sources, input_datas):
+            uniq_id = str(uuid.uuid4())            
+            if data_source == "plain_text":
+                # control plain_text whether it is a local path or not
+                if os.path.exists(input_data):
+                    if get_file_type(input_data) not in valid_audio_extensions:
+                        raise ValueError("data_audio must be a WAV, MP3 or MP4 file")
+                    model_input.append(input_data)
+                else:
+                    raise ValueError("data_audio must be a file path or S3 URI or URL or base64 string")
+            elif data_source == "s3_uri":
+                if get_file_type(input_data) not in valid_audio_extensions:
+                    raise ValueError("data_audio must be a WAV, MP3 or MP4 file")
+                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
+                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+            elif data_source == "url":
+                if get_file_type(input_data) not in valid_audio_extensions:
+                    raise ValueError("data_audio must be a WAV, MP3 or MP4 file")
+                response = requests.get(input_data)
+                with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                    f.write(response.content)
+                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+            elif data_source == "local_path":
+                if get_file_type(input_data) not in valid_audio_extensions:
+                    raise ValueError("data_audio must be a WAV, MP3 or MP4 file")
+                model_input.append(input_data)
+            elif data_source == "base64":
+                base64_bytes = base64.b64decode(input_data, validate=True)
+                with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                    f.write(base64_bytes)
+                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
             else:
-                raise ValueError("data_audio must be a file path or S3 URI or URL or base64 string")
-        elif data_source == "s3 uri":
-            return file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
-        elif data_source == "url":
-            response = requests.get(input_data)
-            with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
-                f.write(response.content)
-            return f"input_data_folder/{uniq_id}{file_extension}"
-        elif data_source == "local_path":
-            return input_data
-        elif data_source == "base64":
-            base64_bytes = base64.b64decode(input_data, validate=True)
-            with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
-                f.write(base64_bytes)
-            return f"input_data_folder/{uniq_id}{file_extension}"
-        else:
-            raise ValueError("data_audio must be a file path or S3 URI or URL or base64 string")
-        
+                raise ValueError("data_audio must be a file path or S3 URI or   URL or base64 string")
+        return model_input
+    ################# Data Dicom #################
     elif data_type == "data_dicom":
-        data_source = determine_data_source(input_data)
-        if file_extension != ".dcm":
-            raise ValueError("data_dicom must be a DCM file")
+        if payload.get("file_type", None) != "dcm":
+            raise ValueError("file_type must be dcm and list of data's key must be 'dcm'")
+        input_datas = payload.get("dicom", None)
+        if not input_datas:
+            raise ValueError("No data found in the payload")
+        if not isinstance(input_datas, list):
+            raise ValueError("input must be a list")
         
-        if data_source == "plain_text":
-            # control plain_text whether it is a local path or not
-            if os.path.exists(input_data):
-                return input_data
+        data_sources = [determine_data_source(data) for data in input_datas]
+        
+        model_input = []
+        for data_source, input_data in zip(data_sources, input_datas):
+            uniq_id = str(uuid.uuid4())            
+            if data_source == "plain_text":
+                # control plain_text whether it is a local path or not
+                if os.path.exists(input_data):
+                    if get_file_type(input_data) != ".dcm":
+                        raise ValueError("data_dicom must be a DCM file")
+                    model_input.append(input_data)
+                else:
+                    raise ValueError("data_dicom must be a file path or S3 URI or URL or base64 string")
+            elif data_source == "s3_uri":
+                if get_file_type(input_data) != ".dcm":
+                    raise ValueError("data_dicom must be a DCM file")
+                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
+                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+            elif data_source == "url":
+                if get_file_type(input_data) != ".dcm":
+                    raise ValueError("data_dicom must be a DCM file")
+                response = requests.get(input_data)
+                with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                    f.write(response.content)
+                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+            elif data_source == "local_path":
+                if get_file_type(input_data) != ".dcm":
+                    raise ValueError("data_dicom must be a DCM file")
+                model_input.append(input_data)
+            elif data_source == "base64":
+                base64_bytes = base64.b64decode(input_data, validate=True)
+                with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                    f.write(base64_bytes)
+                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
             else:
                 raise ValueError("data_dicom must be a file path or S3 URI or URL or base64 string")
-        elif data_source == "s3 uri":
-            return file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
-        elif data_source == "url":
-            response = requests.get(input_data)
-            with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
-                f.write(response.content)
-            return f"input_data_folder/{uniq_id}{file_extension}"
-        elif data_source == "local_path":
-            return input_data
-        elif data_source == "base64":
-            base64_bytes = base64.b64decode(input_data, validate=True)
-            with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
-                f.write(base64_bytes)
-            return f"input_data_folder/{uniq_id}{file_extension}"
-        else:
-            raise ValueError("data_dicom must be a file path or S3 URI or URL or base64 string")
-    
+        return model_input
+    ################# Data SVG #################
     elif data_type == "data_svg":
         pass # Todo: data_svg için işlem yapılacak
     
     else:
         raise ValueError("Invalid data_type")
-        
             
-            
-            
-            
-
+    
+    
+    
+    
+    
