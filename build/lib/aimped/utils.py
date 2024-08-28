@@ -618,15 +618,18 @@ def process_payload(payload:str, file_manager):
                     raise ValueError("data_audio must be a WAV, MP3 or MP4 file")
                 file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
                 model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
-            elif data_source == "url" and "youtube.com" in input_data:
+            elif data_source == "url" and ("youtube.com" in input_data or "youtu.be" in input_data):
                 model_input.append(input_data)
             elif data_source == "url":
                 if get_file_type(input_data) not in valid_audio_extensions:
                     raise ValueError("data_audio must be a WAV, MP3 or MP4 file")
                 response = requests.get(input_data)
-                with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
-                    f.write(response.content)
-                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+                if response.status_code == 200:
+                    with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                        f.write(response.content)
+                    model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+                else:
+                    raise ValueError("URL is not reachable")
             elif data_source == "local_path":
                 if get_file_type(input_data) not in valid_audio_extensions:
                     raise ValueError("data_audio must be a WAV, MP3 or MP4 file")
