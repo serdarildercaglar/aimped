@@ -467,7 +467,7 @@ def process_payload(payload:str, file_manager):
             elif data_source == "s3_uri": # 2
                 if get_file_type(input_data) != ".pdf":
                     raise ValueError("data_pdf must be a PDF file")
-                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
+                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME",default="aimped-model-files"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
                 model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
             elif data_source == "url": # 3
                 if get_file_type(input_data) != ".pdf":
@@ -514,7 +514,7 @@ def process_payload(payload:str, file_manager):
             elif data_source == "s3_uri":
                 if get_file_type(input_data) != ".txt":
                     raise ValueError("data_txt must be a TXT file")
-                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
+                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME",default="aimped-model-files"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
                 model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
             elif data_source == "url":
                 if get_file_type(input_data) != ".txt":
@@ -568,7 +568,7 @@ def process_payload(payload:str, file_manager):
             elif data_source == "s3_uri":
                 if get_file_type(input_data) not in valid_img_extensions:
                     raise ValueError("data_image must be a JPG, JPEG or PNG file")
-                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
+                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME",default="aimped-model-files"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
                 model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
             elif data_source == "url":
                 if get_file_type(input_data) not in valid_img_extensions:
@@ -616,7 +616,7 @@ def process_payload(payload:str, file_manager):
             elif data_source == "s3_uri":
                 if get_file_type(input_data) not in valid_audio_extensions:
                     raise ValueError("data_audio must be a WAV, MP3 or MP4 file")
-                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
+                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME",default="aimped-model-files"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
                 model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
             elif data_source == "url" and ("youtube.com" in input_data or "youtu.be" in input_data):
                 model_input.append(input_data)
@@ -668,7 +668,7 @@ def process_payload(payload:str, file_manager):
             elif data_source == "s3_uri":
                 if get_file_type(input_data) != ".dcm":
                     raise ValueError("data_dicom must be a DCM file")
-                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
+                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME",default="aimped-model-files"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
                 model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
             elif data_source == "url":
                 if get_file_type(input_data) != ".dcm":
