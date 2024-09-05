@@ -141,7 +141,7 @@ class Connect:
             }
 
             response = requests.post(
-                f"{self.options['base_url']}/idp/token", headers=headers,
+                f"{self.options['base_url']}/token", headers=headers,
                 data=params
             )
 
@@ -175,7 +175,7 @@ class Connect:
             }
 
             response = requests.post(
-                f"{self.options['base_url']}/idp/token", headers=headers,
+                f"{self.options['base_url']}/token", headers=headers,
                 data=params
             )
 
