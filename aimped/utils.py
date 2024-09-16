@@ -369,8 +369,8 @@ def process_payload(payload:str, file_manager):
     
     
     
-    if not os.path.exists("input_data_folder"):
-        os.makedirs("input_data_folder")
+    if not os.path.exists("input_data"):
+        os.makedirs("input_data")
     
     aimped_file_type = payload.get("file_type",None)
     if not aimped_file_type:
@@ -467,24 +467,24 @@ def process_payload(payload:str, file_manager):
             elif data_source == "s3_uri": # 2
                 if get_file_type(input_data) != ".pdf":
                     raise ValueError("data_pdf must be a PDF file")
-                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME",default="aimped-model-files"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
-                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME",default="aimped-model-files"), input_data,f"input_data/{uniq_id}{file_extension}")
+                model_input.append(f"input_data/{uniq_id}{file_extension}")
             elif data_source == "url": # 3
                 if get_file_type(input_data) != ".pdf":
                     raise ValueError("data_pdf must be a PDF file")
                 response = requests.get(input_data)
-                with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                with open(f"input_data/{uniq_id}{file_extension}", "wb") as f:
                     f.write(response.content)
-                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+                model_input.append(f"input_data/{uniq_id}{file_extension}")
             elif data_source == "local_path": # 4
                 if get_file_type(input_data) != ".pdf":
                     raise ValueError("data_pdf must be a PDF file")
                 model_input.append(input_data)
             elif data_source == "base64": # 5
                 base64_bytes = base64.b64decode(input_data, validate=True)
-                with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                with open(f"input_data/{uniq_id}{file_extension}", "wb") as f:
                     f.write(base64_bytes)
-                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+                model_input.append(f"input_data/{uniq_id}{file_extension}")
             else:
                 raise ValueError("data_pdf must be a file path or S3 URI or URL or base64 string")
         return model_input
@@ -514,24 +514,24 @@ def process_payload(payload:str, file_manager):
             elif data_source == "s3_uri":
                 if get_file_type(input_data) != ".txt":
                     raise ValueError("data_txt must be a TXT file")
-                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME",default="aimped-model-files"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
-                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME",default="aimped-model-files"), input_data,f"input_data/{uniq_id}{file_extension}")
+                model_input.append(f"input_data/{uniq_id}{file_extension}")
             elif data_source == "url":
                 if get_file_type(input_data) != ".txt":
                     raise ValueError("data_txt must be a TXT file")
                 response = requests.get(input_data)
-                with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                with open(f"input_data/{uniq_id}{file_extension}", "wb") as f:
                     f.write(response.content)
-                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+                model_input.append(f"input_data/{uniq_id}{file_extension}")
             elif data_source == "local_path":
                 if get_file_type(input_data) != ".txt":
                     raise ValueError("data_txt must be a TXT file")
                 model_input.append(input_data)
             elif data_source == "base64":
                 base64_bytes = base64.b64decode(input_data, validate=True)
-                with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                with open(f"input_data/{uniq_id}{file_extension}", "wb") as f:
                     f.write(base64_bytes)
-                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+                model_input.append(f"input_data/{uniq_id}{file_extension}")
             else:
                 raise ValueError("data_txt must be a file path or S3 URI or URL or base64 string")
         return model_input
@@ -568,24 +568,24 @@ def process_payload(payload:str, file_manager):
             elif data_source == "s3_uri":
                 if get_file_type(input_data) not in valid_img_extensions:
                     raise ValueError("data_image must be a JPG, JPEG or PNG file")
-                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME",default="aimped-model-files"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
-                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME",default="aimped-model-files"), input_data,f"input_data/{uniq_id}{file_extension}")
+                model_input.append(f"input_data/{uniq_id}{file_extension}")
             elif data_source == "url":
                 if get_file_type(input_data) not in valid_img_extensions:
                     raise ValueError("data_image must be a JPG, JPEG or PNG file")
                 response = requests.get(input_data)
-                with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                with open(f"input_data/{uniq_id}{file_extension}", "wb") as f:
                     f.write(response.content)
-                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+                model_input.append(f"input_data/{uniq_id}{file_extension}")
             elif data_source == "local_path":
                 if get_file_type(input_data) not in valid_img_extensions:
                     raise ValueError("data_image must be a JPG, JPEG or PNG file")
                 model_input.append(input_data)
             elif data_source == "base64":
                 base64_bytes = base64.b64decode(input_data, validate=True)
-                with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                with open(f"input_data/{uniq_id}{file_extension}", "wb") as f:
                     f.write(base64_bytes)
-                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+                model_input.append(f"input_data/{uniq_id}{file_extension}")
             else:
                 raise ValueError("data_image must be a file path or S3 URI or URL or base64 string")
         return model_input
@@ -616,8 +616,8 @@ def process_payload(payload:str, file_manager):
             elif data_source == "s3_uri":
                 if get_file_type(input_data) not in valid_audio_extensions:
                     raise ValueError("data_audio must be a WAV, MP3 or MP4 file")
-                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME",default="aimped-model-files"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
-                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME",default="aimped-model-files"), input_data,f"input_data/{uniq_id}{file_extension}")
+                model_input.append(f"input_data/{uniq_id}{file_extension}")
             elif data_source == "url" and ("youtube.com" in input_data or "youtu.be" in input_data):
                 model_input.append(input_data)
             elif data_source == "url":
@@ -625,9 +625,9 @@ def process_payload(payload:str, file_manager):
                     raise ValueError("data_audio must be a WAV, MP3 or MP4 file")
                 response = requests.get(input_data)
                 if response.status_code == 200:
-                    with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                    with open(f"input_data/{uniq_id}{file_extension}", "wb") as f:
                         f.write(response.content)
-                    model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+                    model_input.append(f"input_data/{uniq_id}{file_extension}")
                 else:
                     raise ValueError("URL is not reachable")
             elif data_source == "local_path":
@@ -636,9 +636,9 @@ def process_payload(payload:str, file_manager):
                 model_input.append(input_data)
             elif data_source == "base64":
                 base64_bytes = base64.b64decode(input_data, validate=True)
-                with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                with open(f"input_data/{uniq_id}{file_extension}", "wb") as f:
                     f.write(base64_bytes)
-                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+                model_input.append(f"input_data/{uniq_id}{file_extension}")
             else:
                 raise ValueError("data_audio must be a file path or S3 URI or   URL or base64 string")
         return model_input
@@ -668,24 +668,24 @@ def process_payload(payload:str, file_manager):
             elif data_source == "s3_uri":
                 if get_file_type(input_data) != ".dcm":
                     raise ValueError("data_dicom must be a DCM file")
-                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME",default="aimped-model-files"), input_data,f"input_data_folder/{uniq_id}{file_extension}")
-                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+                file_manager.download_file_from_s3(config("PRIVATE_BUCKET_NAME",default="aimped-model-files"), input_data,f"input_data/{uniq_id}{file_extension}")
+                model_input.append(f"input_data/{uniq_id}{file_extension}")
             elif data_source == "url":
                 if get_file_type(input_data) != ".dcm":
                     raise ValueError("data_dicom must be a DCM file")
                 response = requests.get(input_data)
-                with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                with open(f"input_data/{uniq_id}{file_extension}", "wb") as f:
                     f.write(response.content)
-                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+                model_input.append(f"input_data/{uniq_id}{file_extension}")
             elif data_source == "local_path":
                 if get_file_type(input_data) != ".dcm":
                     raise ValueError("data_dicom must be a DCM file")
                 model_input.append(input_data)
             elif data_source == "base64":
                 base64_bytes = base64.b64decode(input_data, validate=True)
-                with open(f"input_data_folder/{uniq_id}{file_extension}", "wb") as f:
+                with open(f"input_data/{uniq_id}{file_extension}", "wb") as f:
                     f.write(base64_bytes)
-                model_input.append(f"input_data_folder/{uniq_id}{file_extension}")
+                model_input.append(f"input_data/{uniq_id}{file_extension}")
             else:
                 raise ValueError("data_dicom must be a file path or S3 URI or URL or base64 string")
         return model_input
