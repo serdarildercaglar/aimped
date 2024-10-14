@@ -698,6 +698,89 @@ def process_payload(payload:str, file_manager):
             
     
     
+class ProcessOutput:
+    def __init__(self, on_premise=True, output_folder="output_data"):
+        """
+        ProcessOutput sınıfı, model çıktısını işlemek için kullanılır.
+
+        Bu modül, yalnızca sonuç olarak dosya üreten modellerin on-premise (yerel) çalışırken kullanılması için tasarlanmıştır. 
+
+        Modül, aşağıdaki işlevleri yerine getirir:
+        1. **Dosya Çıktısı**: Eğer model bir dosya döndürüyorsa, bu dosya belirtilen output_folder klasörüne kaydedilir.
+        2. **Base64 Çıktısı**: Eğer modelin çıktısı base64 formatında ise, bu verinin base64 olarak döndürülmesini sağlar. Ancak, sağlanan verinin geçerli bir base64 formatında olması gerekir.
+
+        Kullanım:
+        - on_premise: True ise, model çıktısı dosya olarak kaydedilecektir.
+        - output_folder: Çıktı dosyalarının kaydedileceği klasörün adı.
+        - process_output: Model çıktısını işlemek için bu metodu çağırın. Gerekli parametreler şunlardır:
+          - output: Modelden alınan çıktı (string).
+          - output_type: Çıktının türü, "local_path" veya "base64" olabilir.
+          - output_file: Çıktı dosyasının adı (sadece output_type "local_path" ise gereklidir).
+        """
+        self.on_premise = on_premise
+        self.output_folder = output_folder
+        self.valid_output_types = ["local_path", "base64"]
     
+    @staticmethod
+    def file_to_base64(file_path):
+        # Dosya uzantısını belirlemek için
+        file_extension = os.path.splitext(file_path)[1].lower()
+
+        # Dosyayı ikili modda (binary mode) açıp base64'e çevirme
+        try:
+            with open(file_path, "rb") as file:
+                file_data = file.read()
+                base64_encoded = base64.b64encode(file_data).decode('utf-8')
+            
+            # Desteklenen dosya türlerini kontrol etme
+            if file_extension in ['.pdf', '.jpg', '.jpeg', '.png', '.dcm']:
+                return base64_encoded
+            else:
+                raise ValueError(f"Unsupported file type: {file_extension}")
+        except FileNotFoundError:
+            print(f"File not found: {file_path}")
+        except Exception as e:
+            print(f"An error occured: {e}")    
     
+    @staticmethod
+    def upload_file(file_manager, local_file_path, s3_output_file_path):
+        try:
+            file_manager.write_file_to_s3(local_file_path=local_file_path,
+                                                bucket_name=config("PRIVATE_BUCKET_NAME",default="aimped-model-files"), # bucket_name
+                                                s3_file_path=s3_output_file_path)
+            logger.info(f"File uploaded: {s3_output_file_path}")
+        except Exception as e:
+            logger.error(f"File uploading error: {e}")
+        
+    def process_output(self, output, output_type, output_folder, output_file=None):
+        """
+        output: output from the model
+        output_type: local_path or base64
+        output_folder: output folder
+        output_file: output file name
+        """
+        if not os.path.exists(output_folder):
+            os.makedirs("output_data")
+        if not output:
+            raise ValueError("No output found")
+        if not output_type and self.on_premise:
+            raise ValueError(f"output_type is required for on_premise mode. Must be one of {self.valid_output_types}")
+        if output_type not in self.valid_output_types:
+            raise ValueError(f"Invalid output_type. Must be one of {self.valid_output_types}")
+        if output_type == "local_path":
+            file_name = output_file.split('/')[-1]
+
+            with open(f"{output_folder}/{file_name}", "w") as f:
+                f.write(output)
+        return f"{output_folder}/+{file_name}"
     
+        if output_type == "base64":
+            # check the base64 string is valid
+            try:
+                base64_bytes = base64.b64decode(output, validate=True)
+            except Exception as e:
+                raise ValueError(f"Invalid base64 string: {str(e)}")
+            return output
+            
+            
+                
